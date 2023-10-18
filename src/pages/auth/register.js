@@ -3,18 +3,22 @@ import NextLink from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
-import { Box, Button, Link, Stack, TextField, Typography } from '@mui/material';
+import { Box, Button, CircularProgress, Link, Stack, TextField, Typography } from '@mui/material';
 import { useAuth } from 'src/hooks/use-auth';
 import { Layout as AuthLayout } from 'src/layouts/auth/layout';
+import { useState } from 'react';
+import { LoadingButton } from '@mui/lab';
 
 const Page = () => {
   const router = useRouter();
   const auth = useAuth();
+  const [loading, setLoading] = useState(false)
+
   const formik = useFormik({
     initialValues: {
-      email: '',
-      name: '',
-      password: '',
+      email: 'tanayvan258@gmail.com',
+      name: 'Tanay',
+      password: 'Rock@1999',
       submit: null
     },
     validationSchema: Yup.object({
@@ -34,9 +38,15 @@ const Page = () => {
     }),
     onSubmit: async (values, helpers) => {
       try {
-        await auth.signUp(values.email, values.name, values.password);
-        router.push('/');
+        setLoading(true)
+        let result = await auth.signUp(values.email, values.name, values.password);
+        setLoading(false);
+
+        if (result.success) {
+          router.push('/');
+        }
       } catch (err) {
+        setLoading(false);
         helpers.setStatus({ success: false });
         helpers.setErrors({ submit: err.message });
         helpers.setSubmitting(false);
@@ -138,15 +148,17 @@ const Page = () => {
                   {formik.errors.submit}
                 </Typography>
               )}
-              <Button
+              <LoadingButton
                 fullWidth
                 size="large"
                 sx={{ mt: 3 }}
                 type="submit"
                 variant="contained"
+                loading={loading}
+                loadingIndicator={<CircularProgress color="inherit" size={16} />}
               >
                 Continue
-              </Button>
+              </LoadingButton>
             </form>
           </div>
         </Box>

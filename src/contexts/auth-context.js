@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useReducer, useRef } from 'react';
 import PropTypes from 'prop-types';
+import { createUserWithEmailAndPassword, getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import { firebase } from 'src/firebase';
 
 const HANDLERS = {
   INITIALIZE: 'INITIALIZE',
@@ -63,7 +65,7 @@ export const AuthProvider = (props) => {
   const { children } = props;
   const [state, dispatch] = useReducer(reducer, initialState);
   const initialized = useRef(false);
-
+  const auth = getAuth(firebase)
   const initialize = async () => {
     // Prevent from calling twice in development mode with React.StrictMode enabled
     if (initialized.current) {
@@ -75,28 +77,37 @@ export const AuthProvider = (props) => {
     let isAuthenticated = false;
 
     try {
-      isAuthenticated = window.sessionStorage.getItem('authenticated') === 'true';
+      isAuthenticated = auth.currentUser
     } catch (err) {
       console.error(err);
     }
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        // User is signed in.
+        dispatch({
+          type: HANDLERS.INITIALIZE,
+          payload: user,
+        });
+      } else {
+        // No user is signed in.
+        dispatch({
+          type: HANDLERS.INITIALIZE,
+        });
+      }
+    });
 
-    if (isAuthenticated) {
-      const user = {
-        id: '5e86809283e28b96d2d38537',
-        avatar: '/assets/avatars/avatar-anika-visser.png',
-        name: 'Anika Visser',
-        email: 'anika.visser@devias.io'
-      };
+    // if (isAuthenticated) {
 
-      dispatch({
-        type: HANDLERS.INITIALIZE,
-        payload: user
-      });
-    } else {
-      dispatch({
-        type: HANDLERS.INITIALIZE
-      });
-    }
+
+    //   dispatch({
+    //     type: HANDLERS.INITIALIZE,
+    //     payload: auth.currentUser
+    //   });
+    // } else {
+    //   dispatch({
+    //     type: HANDLERS.INITIALIZE
+    //   });
+    // }
   };
 
   useEffect(
@@ -128,34 +139,61 @@ export const AuthProvider = (props) => {
   };
 
   const signIn = async (email, password) => {
-    if (email !== 'demo@devias.io' || password !== 'Password123!') {
+    // if (email !== 'demo@devias.io' || password !== 'Password123!') {
+    //   throw new Error('Please check your email and password');
+    // }
+    try {
+      let user = await signInWithEmailAndPassword(auth, email, password);
+      console.log('user', user.user)
+      dispatch({
+        type: HANDLERS.SIGN_IN,
+        payload: user.user
+      });
+      return { success: true }
+    } catch (err) {
+      // console.error(err.code);
       throw new Error('Please check your email and password');
     }
 
-    try {
-      window.sessionStorage.setItem('authenticated', 'true');
-    } catch (err) {
-      console.error(err);
-    }
+    // const user = {
+    //   id: '5e86809283e28b96d2d38537',
+    //   avatar: '/assets/avatars/avatar-anika-visser.png',
+    //   name: 'Anika Visser',
+    //   email: 'anika.visser@devias.io'
+    // };
 
-    const user = {
-      id: '5e86809283e28b96d2d38537',
-      avatar: '/assets/avatars/avatar-anika-visser.png',
-      name: 'Anika Visser',
-      email: 'anika.visser@devias.io'
-    };
 
-    dispatch({
-      type: HANDLERS.SIGN_IN,
-      payload: user
-    });
   };
 
   const signUp = async (email, name, password) => {
-    throw new Error('Sign up is not implemented');
+
+    try {
+      let user = await createUserWithEmailAndPassword(auth, email, password)
+      console.log('user', user)
+      dispatch({
+        type: HANDLERS.SIGN_IN,
+        payload: user
+      });
+      return { success: true }
+    } catch (error) {
+      const code = error.code;
+      let message = 'Something Went Wrong'
+      if (code == 'auth/email-already-in-use') {
+        message = 'Oops! Email already in use '
+      }
+
+
+      throw new Error(message);
+    }
+
+
+
   };
 
-  const signOut = () => {
+  const signOut = async () => {
+
+    await auth.signOut()
+
     dispatch({
       type: HANDLERS.SIGN_OUT
     });

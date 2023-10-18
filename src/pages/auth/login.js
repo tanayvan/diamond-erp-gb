@@ -8,6 +8,7 @@ import {
   Alert,
   Box,
   Button,
+  CircularProgress,
   FormHelperText,
   Link,
   Stack,
@@ -18,15 +19,17 @@ import {
 } from '@mui/material';
 import { useAuth } from 'src/hooks/use-auth';
 import { Layout as AuthLayout } from 'src/layouts/auth/layout';
+import { LoadingButton } from '@mui/lab';
 
 const Page = () => {
   const router = useRouter();
   const auth = useAuth();
+  const [loading, setLoading] = useState(false)
   const [method, setMethod] = useState('email');
   const formik = useFormik({
     initialValues: {
       email: 'demo@devias.io',
-      password: 'Password123!',
+      password: 'Rock@1999',
       submit: null
     },
     validationSchema: Yup.object({
@@ -42,8 +45,12 @@ const Page = () => {
     }),
     onSubmit: async (values, helpers) => {
       try {
-        await auth.signIn(values.email, values.password);
-        router.push('/');
+        setLoading(true)
+        let result = await auth.signIn(values.email, values.password);
+        setLoading(false)
+        if (result.success) {
+          router.push('/');
+        }
       } catch (err) {
         helpers.setStatus({ success: false });
         helpers.setErrors({ submit: err.message });
@@ -115,102 +122,79 @@ const Page = () => {
                 </Link>
               </Typography>
             </Stack>
-            <Tabs
-              onChange={handleMethodChange}
-              sx={{ mb: 3 }}
-              value={method}
+
+
+            <form
+              noValidate
+              onSubmit={formik.handleSubmit}
             >
-              <Tab
-                label="Email"
-                value="email"
-              />
-              <Tab
-                label="Phone Number"
-                value="phoneNumber"
-              />
-            </Tabs>
-            {method === 'email' && (
-              <form
-                noValidate
-                onSubmit={formik.handleSubmit}
-              >
-                <Stack spacing={3}>
-                  <TextField
-                    error={!!(formik.touched.email && formik.errors.email)}
-                    fullWidth
-                    helperText={formik.touched.email && formik.errors.email}
-                    label="Email Address"
-                    name="email"
-                    onBlur={formik.handleBlur}
-                    onChange={formik.handleChange}
-                    type="email"
-                    value={formik.values.email}
-                  />
-                  <TextField
-                    error={!!(formik.touched.password && formik.errors.password)}
-                    fullWidth
-                    helperText={formik.touched.password && formik.errors.password}
-                    label="Password"
-                    name="password"
-                    onBlur={formik.handleBlur}
-                    onChange={formik.handleChange}
-                    type="password"
-                    value={formik.values.password}
-                  />
-                </Stack>
-                <FormHelperText sx={{ mt: 1 }}>
-                  Optionally you can skip.
-                </FormHelperText>
-                {formik.errors.submit && (
-                  <Typography
-                    color="error"
-                    sx={{ mt: 3 }}
-                    variant="body2"
-                  >
-                    {formik.errors.submit}
-                  </Typography>
-                )}
-                <Button
+              <Stack spacing={3}>
+                <TextField
+                  error={!!(formik.touched.email && formik.errors.email)}
                   fullWidth
-                  size="large"
-                  sx={{ mt: 3 }}
-                  type="submit"
-                  variant="contained"
-                >
-                  Continue
-                </Button>
-                <Button
+                  helperText={formik.touched.email && formik.errors.email}
+                  label="Email Address"
+                  name="email"
+                  onBlur={formik.handleBlur}
+                  onChange={formik.handleChange}
+                  type="email"
+                  value={formik.values.email}
+                />
+                <TextField
+                  error={!!(formik.touched.password && formik.errors.password)}
                   fullWidth
-                  size="large"
-                  sx={{ mt: 3 }}
-                  onClick={handleSkip}
-                >
-                  Skip authentication
-                </Button>
-                <Alert
-                  color="primary"
-                  severity="info"
-                  sx={{ mt: 3 }}
-                >
-                  <div>
-                    You can use <b>demo@devias.io</b> and password <b>Password123!</b>
-                  </div>
-                </Alert>
-              </form>
-            )}
-            {method === 'phoneNumber' && (
-              <div>
+                  helperText={formik.touched.password && formik.errors.password}
+                  label="Password"
+                  name="password"
+                  onBlur={formik.handleBlur}
+                  onChange={formik.handleChange}
+                  type="password"
+                  value={formik.values.password}
+                />
+              </Stack>
+              {/* <FormHelperText sx={{ mt: 1 }}>
+                Optionally you can skip.
+              </FormHelperText> */}
+              {formik.errors.submit && (
                 <Typography
-                  sx={{ mb: 1 }}
-                  variant="h6"
+                  color="error"
+                  sx={{ mt: 3 }}
+                  variant="body2"
                 >
-                  Not available in the demo
+                  {formik.errors.submit}
                 </Typography>
-                <Typography color="text.secondary">
-                  To prevent unnecessary costs we disabled this feature in the demo.
-                </Typography>
-              </div>
-            )}
+              )}
+              <LoadingButton
+                fullWidth
+                size="large"
+                sx={{ mt: 3 }}
+                type="submit"
+                variant="contained"
+                loadingIndicator={<CircularProgress color="inherit" size={16} />}
+                loading={loading}
+              >
+                Continue
+              </LoadingButton>
+              {/* <Button
+                fullWidth
+                size="large"
+                sx={{ mt: 3 }}
+                onClick={handleSkip}
+              >
+                Skip authentication
+              </Button> */}
+              <Alert
+                color="primary"
+                severity="info"
+                sx={{ mt: 3 }}
+              >
+                <div>
+                  You can use <b>demo@devias.io</b> and password <b>Password123!</b>
+                </div>
+              </Alert>
+            </form>
+
+
           </div>
         </Box>
       </Box>
