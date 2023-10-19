@@ -1,0 +1,474 @@
+import { useCallback, useMemo, useState } from 'react';
+import Head from 'next/head';
+import { subDays, subHours } from 'date-fns';
+import ArrowDownOnSquareIcon from '@heroicons/react/24/solid/ArrowDownOnSquareIcon';
+import ArrowUpOnSquareIcon from '@heroicons/react/24/solid/ArrowUpOnSquareIcon';
+import PlusIcon from '@heroicons/react/24/solid/PlusIcon';
+import { Box, Button, CircularProgress, Container, Stack, SvgIcon, Typography } from '@mui/material';
+import { useSelection } from 'src/hooks/use-selection';
+import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
+import { CustomersTable } from 'src/sections/customer/customers-table';
+import { CustomersSearch } from 'src/sections/customer/customers-search';
+import { applyPagination } from 'src/utils/apply-pagination';
+import ImportModal from 'src/components/importModal';
+import * as XLSX from 'xlsx';
+import { LoadingButton } from '@mui/lab';
+import { tableHeaders } from 'src/constants/headers';
+import { collection, doc, getDocs, getFirestore, query, setDoc, where } from 'firebase/firestore';
+import { db, firebase } from 'src/firebase';
+import { v4 } from 'uuid'
+import { useEffect } from 'react';
+const now = new Date();
+
+const data =
+  [
+    {
+      name: '1',
+      shape: 'Round',
+      weight: '1.5',
+      color: 'D',
+      clarity: 'IF',
+      lab: 'GIA',
+      status: 'In Stock',
+      location: 'New York',
+      cut: 'EX',
+      polish: 'Very Good',
+      symm: 'Good',
+      fluo: 'None',
+      rapprice: '$10,000',
+      pricecrt: '5%',
+      certificateNumber: 2201265284
+    },
+    {
+      name: '2',
+      shape: 'Princess',
+      weight: '1.2',
+      color: 'E',
+      clarity: 'VVS1',
+      lab: 'GIA',
+      status: 'Sold',
+      location: 'Los Angeles',
+      cut: 'Very Good',
+      polish: 'EX',
+      symm: 'EX',
+      fluo: 'Faint',
+      rapprice: '$8,500',
+      pricecrt: '4%',
+      certificateNumber: 2201265284
+    },
+    {
+      name: '3',
+      shape: 'Emerald',
+      weight: '2.0',
+      color: 'G',
+      clarity: 'VS1',
+      lab: 'GIA',
+      status: 'In Stock',
+      location: 'London',
+      cut: 'Good',
+      polish: 'Good',
+      symm: 'Fair',
+      fluo: 'Strong',
+      rapprice: '$14,000',
+      pricecrt: '6%',
+      certificateNumber: 2201265284
+    },
+    {
+      name: '4',
+      shape: 'Oval',
+      weight: '1.8',
+      color: 'F',
+      clarity: 'SI1',
+      lab: 'GIA',
+      status: 'Sold',
+      location: 'Paris',
+      cut: 'Fair',
+      polish: 'Poor',
+      symm: 'Poor',
+      fluo: 'Medium',
+      rapprice: '$6,000',
+      pricecrt: '3%',
+      certificateNumber: 2201265284
+    },
+    {
+      name: '5',
+      shape: 'Pear',
+      weight: '1.3',
+      color: 'H',
+      clarity: 'VVS2',
+      lab: 'GIA',
+      status: 'In Stock',
+      location: 'Chicago',
+      cut: 'EX',
+      polish: 'EX',
+      symm: 'EX',
+      fluo: 'None',
+      rapprice: '$9,500',
+      pricecrt: '4.5%',
+      certificateNumber: 2201265284
+    },
+    {
+      name: '6',
+      shape: 'Radiant',
+      weight: '1.7',
+      color: 'I',
+      clarity: 'VS2',
+      lab: 'GIA',
+      status: 'Sold',
+      location: 'Miami',
+      cut: 'Very Good',
+      polish: 'Good',
+      symm: 'Good',
+      fluo: 'Faint',
+      rapprice: '$7,800',
+      pricecrt: '4.2%',
+      certificateNumber: 2201265284
+    },
+    {
+      name: '7',
+      shape: 'Marquise',
+      weight: '1.4',
+      color: 'J',
+      clarity: 'SI2',
+      lab: 'GIA',
+      status: 'In Stock',
+      location: 'San Francisco',
+      cut: 'Good',
+      polish: 'Fair',
+      symm: 'Fair',
+      fluo: 'Strong',
+      rapprice: '$5,200',
+      pricecrt: '3.8%',
+      certificateNumber: 2201265284
+    },
+    {
+      name: '8',
+      shape: 'Cushion',
+      weight: '1.9',
+      color: 'K',
+      clarity: 'I1',
+      lab: 'GIA',
+      status: 'Sold',
+      location: 'Toronto',
+      cut: 'Fair',
+      polish: 'Poor',
+      symm: 'Poor',
+      fluo: 'Medium',
+      rapprice: '$3,900',
+      pricecrt: '2.7%',
+      certificateNumber: 2201265284
+    },
+    {
+      name: '9',
+      shape: 'Asscher',
+      weight: '1.6',
+      color: 'L',
+      clarity: 'I3',
+      lab: 'GIA',
+      status: 'In Stock',
+      location: 'Sydney',
+      cut: 'Good',
+      polish: 'Fair',
+      symm: 'Fair',
+      fluo: 'None',
+      rapprice: '$2,600',
+      pricecrt: '2.2%',
+      certificateNumber: 2201265284
+    },
+    {
+      name: '10',
+      shape: 'Heart',
+      weight: '1.2',
+      color: 'M',
+      clarity: 'FL',
+      lab: 'GIA',
+      status: 'Sold',
+      location: 'Tokyo',
+      cut: 'EX',
+      polish: 'EX',
+      symm: 'EX',
+      fluo: 'Faint',
+      rapprice: '$11,200',
+      pricecrt: '5.5%',
+      certificateNumber: 2201265284
+    }
+  ];
+
+
+
+const useCustomers = (page, rowsPerPage) => {
+  return useMemo(
+    () => {
+      return applyPagination(data, page, rowsPerPage);
+    },
+    [page, rowsPerPage]
+  );
+};
+
+const useCustomerIds = (customers) => {
+  return useMemo(
+    () => {
+      return customers.map((customer) => customer.id);
+    },
+    [customers]
+  );
+};
+
+const Page = () => {
+
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
+  const customers = useCustomers(page, rowsPerPage);
+  const customersIds = useCustomerIds(customers);
+  const customersSelection = useSelection(customersIds);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importedTableData, setImportedTableData] = useState([]);
+  const [stocks, setStocks] = useState([]);
+  const [loading, setLoading] = useState(false)
+  const openImportModal = () => {
+    setIsImportModalOpen(true);
+  };
+
+  const closeImportModal = () => {
+    setIsImportModalOpen(false);
+  };
+  const handlePageChange = useCallback(
+    (event, value) => {
+      setPage(value);
+    },
+    []
+  );
+
+  const handleRowsPerPageChange = useCallback(
+    (event) => {
+      setRowsPerPage(event.target.value);
+    },
+    []
+  );
+  const handleFileUpload = (event) => {
+    if (event.target.files) {
+      setLoading(true);
+      let file = event.target.files[0]
+      console.log(file);
+      const reader = new FileReader();
+
+      reader.onload = (event) => {
+        const data = event.target.result;
+        const workbook = XLSX.read(data, { type: 'binary' });
+
+        // Assuming a single sheet in the workbook
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        console.log(sheetName, sheet)
+        // // Convert sheet data to JSON
+        const jsonData = XLSX.utils.sheet_to_json(sheet);
+
+        console.log(jsonData); // This will be an array of objects
+        let finalList = []
+        for (const stock of jsonData) {
+          let data = {}
+          Object.keys(stock).map(key => {
+            let header = tableHeaders.find(t => t.title == key);
+            if (header) {
+              data[header.key] = stock[key]
+            }
+          })
+          finalList.push(data)
+        }
+        setImportedTableData(finalList);
+        openImportModal();
+        setLoading(false);
+
+      };
+      reader.readAsBinaryString(file);
+    } else {
+      console.log('called')
+    }
+  }
+
+  const handleUploadData = async () => {
+    setLoading(true);
+    for (const data of importedTableData) {
+      let id = v4()
+      await setDoc(doc(db, 'daimondStock', id), {
+        ...data, id, status: "Available", stoneNumber: 1
+      });
+
+      closeImportModal();
+      getStock()
+    }
+    setLoading(false);
+
+  }
+
+
+  const getStock = async () => {
+    setLoading(true)
+    const q = query(collection(db, "daimondStock"));
+
+    const querySnapshot = await getDocs(q);
+    let result = []
+    querySnapshot.forEach((doc) => {
+      result.push(doc.data())
+    });
+    setLoading(false)
+    setStocks(result)
+  }
+
+  useEffect(() => {
+    getStock()
+  }, [])
+
+
+  return (
+    <>
+      <Head>
+        <title>
+          Stocks
+        </title>
+      </Head>
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          py: 8
+        }}
+      >
+        <Container maxWidth="xl">
+          <Stack spacing={3}>
+            <Stack
+              direction="row"
+              justifyContent="space-between"
+              spacing={4}
+            >
+              <Stack spacing={1}>
+                <Typography variant="h4">
+                  Stocks
+                </Typography>
+                <Stack
+                  alignItems="center"
+                  direction="row"
+                  spacing={1}
+                >
+                  <LoadingButton
+                    color="inherit"
+                    startIcon={(
+                      <SvgIcon fontSize="small">
+                        <ArrowUpOnSquareIcon />
+                      </SvgIcon>
+                    )}
+                    style={{ position: "relative" }}
+                    loadingIndicator={<CircularProgress color="inherit" size={16} />}
+                    loading={loading}
+                  >
+                    Upload File
+                    <input type='file' style={{
+                      // clip: 'rect(0 0 0 0)',
+                      // clipPath: 'inset(50%)',
+                      height: '100%',
+                      overflow: 'hidden',
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      whiteSpace: 'nowrap',
+                      width: '100%',
+                      opacity: 0
+                      // backgroundColor: "red"
+                    }}
+                      onChange={handleFileUpload}
+                      accept=".xlsx,.xls"
+                    />
+                  </LoadingButton>
+                  <Button
+                    color="inherit"
+                    startIcon={(
+                      <SvgIcon fontSize="small">
+                        <ArrowDownOnSquareIcon />
+                      </SvgIcon>
+                    )}
+                  >
+                    Export
+                  </Button>
+                </Stack>
+              </Stack>
+              <div>
+                <Button
+                  startIcon={(
+                    <SvgIcon fontSize="small">
+                      <PlusIcon />
+                    </SvgIcon>
+                  )}
+                  variant="contained"
+                >
+                  Add
+                </Button>
+              </div>
+            </Stack>
+            <CustomersSearch />
+            <CustomersTable
+              count={stocks.length}
+              items={stocks}
+              onDeselectAll={customersSelection.handleDeselectAll}
+              onDeselectOne={customersSelection.handleDeselectOne}
+              onPageChange={handlePageChange}
+              onRowsPerPageChange={handleRowsPerPageChange}
+              onSelectAll={customersSelection.handleSelectAll}
+              onSelectOne={customersSelection.handleSelectOne}
+              page={page}
+              rowsPerPage={rowsPerPage}
+              selected={customersSelection.selected}
+            />
+          </Stack>
+        </Container>
+      </Box>
+      <ImportModal open={isImportModalOpen} onClose={closeImportModal} >
+        <Typography variant="body1" sx={{ margin: "2rem 0" }}>
+          This is the stock which will get uploaded.
+        </Typography>
+        <CustomersTable
+          count={importedTableData.length}
+          items={importedTableData}
+          onDeselectAll={customersSelection.handleDeselectAll}
+          onDeselectOne={customersSelection.handleDeselectOne}
+          onPageChange={handlePageChange}
+          onRowsPerPageChange={handleRowsPerPageChange}
+          onSelectAll={customersSelection.handleSelectAll}
+          onSelectOne={customersSelection.handleSelectOne}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          selected={customersSelection.selected}
+        />
+        <LoadingButton
+          variant='contained'
+
+          style={{ position: "relative", marginTop: "1rem" }}
+          loadingIndicator={<CircularProgress color="inherit" size={16} />}
+          loading={loading}
+          onClick={handleUploadData}
+        >
+          Upload File
+
+
+        </LoadingButton>
+        <LoadingButton
+          variant='contained'
+
+          style={{ position: "relative", marginTop: "1rem", marginLeft: "1rem" }}
+          onClick={closeImportModal}
+        >
+          Close
+
+
+        </LoadingButton>
+      </ImportModal>
+    </>
+  );
+};
+
+Page.getLayout = (page) => (
+  <DashboardLayout>
+    {page}
+  </DashboardLayout>
+);
+
+export default Page;

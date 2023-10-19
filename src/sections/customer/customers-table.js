@@ -5,6 +5,7 @@ import {
   Box,
   Card,
   Checkbox,
+  Link,
   Stack,
   Table,
   TableBody,
@@ -16,6 +17,7 @@ import {
 } from '@mui/material';
 import { Scrollbar } from 'src/components/scrollbar';
 import { getInitials } from 'src/utils/get-initials';
+import { tableHeaders } from 'src/constants/headers';
 
 export const CustomersTable = (props) => {
   const {
@@ -23,7 +25,7 @@ export const CustomersTable = (props) => {
     items = [],
     onDeselectAll,
     onDeselectOne,
-    onPageChange = () => {},
+    onPageChange = () => { },
     onRowsPerPageChange,
     onSelectAll,
     onSelectOne,
@@ -35,6 +37,7 @@ export const CustomersTable = (props) => {
   const selectedSome = (selected.length > 0) && (selected.length < items.length);
   const selectedAll = (items.length > 0) && (selected.length === items.length);
 
+
   return (
     <Card>
       <Scrollbar>
@@ -42,85 +45,31 @@ export const CustomersTable = (props) => {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell padding="checkbox">
-                  <Checkbox
-                    checked={selectedAll}
-                    indeterminate={selectedSome}
-                    onChange={(event) => {
-                      if (event.target.checked) {
-                        onSelectAll?.();
-                      } else {
-                        onDeselectAll?.();
-                      }
-                    }}
-                  />
-                </TableCell>
-                <TableCell>
-                  Name
-                </TableCell>
-                <TableCell>
-                  Email
-                </TableCell>
-                <TableCell>
-                  Location
-                </TableCell>
-                <TableCell>
-                  Phone
-                </TableCell>
-                <TableCell>
-                  Signed Up
-                </TableCell>
+                {tableHeaders.map((th) => {
+                  return <TableCell>
+                    {th.title}
+                  </TableCell>
+                })}
               </TableRow>
             </TableHead>
             <TableBody>
-              {items.map((customer) => {
-                const isSelected = selected.includes(customer.id);
-                const createdAt = format(customer.createdAt, 'dd/MM/yyyy');
+              {items.map((stock, index) => {
 
                 return (
                   <TableRow
                     hover
-                    key={customer.id}
-                    selected={isSelected}
+                    key={index}
+
                   >
-                    <TableCell padding="checkbox">
-                      <Checkbox
-                        checked={isSelected}
-                        onChange={(event) => {
-                          if (event.target.checked) {
-                            onSelectOne?.(customer.id);
-                          } else {
-                            onDeselectOne?.(customer.id);
-                          }
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Stack
-                        alignItems="center"
-                        direction="row"
-                        spacing={2}
-                      >
-                        <Avatar src={customer.avatar}>
-                          {getInitials(customer.name)}
-                        </Avatar>
-                        <Typography variant="subtitle2">
-                          {customer.name}
-                        </Typography>
-                      </Stack>
-                    </TableCell>
-                    <TableCell>
-                      {customer.email}
-                    </TableCell>
-                    <TableCell>
-                      {customer.address.city}, {customer.address.state}, {customer.address.country}
-                    </TableCell>
-                    <TableCell>
-                      {customer.phone}
-                    </TableCell>
-                    <TableCell>
-                      {createdAt}
-                    </TableCell>
+                    {tableHeaders.map(th => {
+
+                      return (
+                        <TableCell>
+                          {th.key == 'certificateNumber' ?
+                            <Link href={`https://www.gia.edu/report-check?reportno=${stock[th.key]}`} target='_blank'>{stock[th.key]}</Link> : stock[th.key]}
+                        </TableCell>
+                      )
+                    })}
                   </TableRow>
                 );
               })}
