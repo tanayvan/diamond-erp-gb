@@ -4,7 +4,7 @@ import { subDays, subHours } from 'date-fns';
 import ArrowDownOnSquareIcon from '@heroicons/react/24/solid/ArrowDownOnSquareIcon';
 import ArrowUpOnSquareIcon from '@heroicons/react/24/solid/ArrowUpOnSquareIcon';
 import PlusIcon from '@heroicons/react/24/solid/PlusIcon';
-import { Box, Button, CircularProgress, Container, Stack, SvgIcon, Typography } from '@mui/material';
+import { Autocomplete, Box, Button, CircularProgress, Container, Stack, SvgIcon, TextField, Typography } from '@mui/material';
 import { useSelection } from 'src/hooks/use-selection';
 import { Layout as DashboardLayout } from 'src/layouts/dashboard/layout';
 import { CustomersTable } from 'src/sections/customer/customers-table';
@@ -14,10 +14,13 @@ import ImportModal from 'src/components/importModal';
 import * as XLSX from 'xlsx';
 import { LoadingButton } from '@mui/lab';
 import { tableHeaders } from 'src/constants/headers';
-import { collection, doc, getDocs, getFirestore, query, setDoc, where } from 'firebase/firestore';
+import { collection, doc, getDocs, getFirestore, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { db, firebase } from 'src/firebase';
 import { v4 } from 'uuid'
 import { useEffect } from 'react';
+import { usePopover } from 'src/hooks/use-popover';
+import { StockActionPopover } from 'src/components/stockActionPopus';
+import { companies } from 'src/constants/company';
 const now = new Date();
 
 const data =
@@ -222,15 +225,26 @@ const Page = () => {
   const customersIds = useCustomerIds(customers);
   const customersSelection = useSelection(customersIds);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isMemoSelected, setIsMemoSelected] = useState(false);
   const [importedTableData, setImportedTableData] = useState([]);
   const [stocks, setStocks] = useState([]);
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(false);
+  const [selectedRows, setSelectedRows] = useState([]);
+  const stockPopover = usePopover();
+
   const openImportModal = () => {
     setIsImportModalOpen(true);
   };
 
   const closeImportModal = () => {
     setIsImportModalOpen(false);
+  };
+  const openMemoModal = () => {
+    setIsMemoSelected(true);
+  };
+
+  const closeMemoModal = () => {
+    setIsMemoSelected(false);
   };
   const handlePageChange = useCallback(
     (event, value) => {
@@ -300,7 +314,48 @@ const Page = () => {
     setLoading(false);
 
   }
-
+  const issueMemo = async () => {
+    setLoading(true)
+    for (const row of selectedRows) {
+      const stockRef = doc(db, "daimondStock", row.id);
+      await updateDoc(stockRef, {
+        status: 'On Memo'
+      });
+    }
+    await getStock()
+    setLoading(false);
+    setSelectedRows([]);
+    stockPopover.handleClose();
+    const staticFilePath = 'mem-1.pdf'; // Adjust this to the path of your static file
+    const newTab = window.open(`${window.location.origin}/${staticFilePath}`, '_blank');
+    if (newTab) {
+      newTab.focus();
+    } else {
+      alert('Your browser is blocking pop-ups. Please allow pop-ups for this website.');
+    }
+    closeMemoModal()
+  }
+  const returnFromMemo = async () => {
+    setLoading(true)
+    for (const row of selectedRows) {
+      const stockRef = doc(db, "daimondStock", row.id);
+      await updateDoc(stockRef, {
+        status: 'Available'
+      });
+    }
+    await getStock();
+    setSelectedRows([])
+    setLoading(false);
+    stockPopover.handleClose();
+    const staticFilePath = 'mem-1.pdf'; // Adjust this to the path of your static file
+    const newTab = window.open(`${window.location.origin}/${staticFilePath}`, '_blank');
+    if (newTab) {
+      newTab.focus();
+    } else {
+      alert('Your browser is blocking pop-ups. Please allow pop-ups for this website.');
+    }
+    closeMemoModal()
+  }
 
   const getStock = async () => {
     setLoading(true)
@@ -314,7 +369,22 @@ const Page = () => {
     setLoading(false)
     setStocks(result)
   }
+  const handleRowSelected = (data, value) => {
+    console.log('data,', value);
+    if (!value) {
+      let d = selectedRows.filter(sr => sr.id != data.id);
+      setSelectedRows(d)
+    } else {
+      setSelectedRows((prev) => [...prev, data])
+    }
+  };
 
+  const handleOnMemo = () => {
+    if (selectedRows.length) {
+
+      setIsMemoSelected(true)
+    }
+  }
   useEffect(() => {
     getStock()
   }, [])
@@ -399,8 +469,10 @@ const Page = () => {
                     </SvgIcon>
                   )}
                   variant="contained"
+                  onClick={stockPopover.handleOpen}
+                  ref={stockPopover.anchorRef}
                 >
-                  Add
+                  Actions
                 </Button>
               </div>
             </Stack>
@@ -417,6 +489,9 @@ const Page = () => {
               page={page}
               rowsPerPage={rowsPerPage}
               selected={customersSelection.selected}
+              handleRowSelected={handleRowSelected}
+              selectedRows={selectedRows}
+              stockPopover={stockPopover}
             />
           </Stack>
         </Container>
@@ -461,6 +536,58 @@ const Page = () => {
 
         </LoadingButton>
       </ImportModal>
+      <ImportModal open={isMemoSelected} onClose={closeMemoModal} title='Memo' >
+
+        <Autocomplete
+          disablePortal
+          id="combo-box-demo"
+          options={companies}
+          sx={{ width: 300, margin: "3rem 0" }}
+          renderInput={(params) => <TextField {...params} label="Select Broker" />}
+          getOptionLabel={(o) => o.title}
+        />
+        <CustomersTable
+          count={selectedRows.length}
+          items={selectedRows}
+          onDeselectAll={customersSelection.handleDeselectAll}
+          onDeselectOne={customersSelection.handleDeselectOne}
+          onPageChange={handlePageChange}
+          onRowsPerPageChange={handleRowsPerPageChange}
+          onSelectAll={customersSelection.handleSelectAll}
+          onSelectOne={customersSelection.handleSelectOne}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          selected={customersSelection.selected}
+          isCheckboxNeeded={false}
+        />
+        <LoadingButton
+          variant='contained'
+
+          style={{ position: "relative", marginTop: "1rem" }}
+          loadingIndicator={<CircularProgress color="inherit" size={16} />}
+          loading={loading}
+          onClick={issueMemo}
+        >
+          Issue Memo
+
+
+        </LoadingButton>
+        <LoadingButton
+          variant='contained'
+          loadingIndicator={<CircularProgress color="inherit" size={16} />}
+          loading={loading}
+          style={{ position: "relative", marginTop: "1rem", marginLeft: "1rem" }}
+          onClick={returnFromMemo}
+        >
+          Return From Memo
+
+
+        </LoadingButton>
+      </ImportModal>
+      <StockActionPopover anchorEl={stockPopover.anchorRef.current}
+        open={stockPopover.open}
+        onClose={stockPopover.handleClose}
+        handleOnMemo={handleOnMemo} />
     </>
   );
 };

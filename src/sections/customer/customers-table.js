@@ -31,12 +31,15 @@ export const CustomersTable = (props) => {
     onSelectOne,
     page = 0,
     rowsPerPage = 0,
-    selected = []
+    selected = [],
+    handleRowSelected = () => { },
+    selectedRows = [],
+    stockPopover,
+    isCheckboxNeeded = true
   } = props;
 
   const selectedSome = (selected.length > 0) && (selected.length < items.length);
   const selectedAll = (items.length > 0) && (selected.length === items.length);
-
 
   return (
     <Card>
@@ -61,10 +64,12 @@ export const CustomersTable = (props) => {
                     key={index}
 
                   >
+
                     {tableHeaders.map(th => {
 
                       return (
-                        <TableCell>
+                        <TableCell sx={th.key == 'name' ? { minWidth: "12rem" } : { minWidth: "5rem" }}>
+                          {th.key == 'name' && isCheckboxNeeded ? <Checkbox onChange={(e) => { handleRowSelected(stock, selectedRows.find(o => o.id == stock.id) ? false : true) }} checked={selectedRows.find(o => o.id == stock.id) ? true : false} /> : ""}
                           {th.key == 'certificateNumber' ?
                             <Link href={`https://www.gia.edu/report-check?reportno=${stock[th.key]}`} target='_blank'>{stock[th.key]}</Link> : stock[th.key]}
                         </TableCell>

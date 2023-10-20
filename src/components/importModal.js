@@ -1,9 +1,9 @@
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
 
-const ImportModal = ({ open, onClose, children }) => {
+const ImportModal = ({ open, onClose, children, title = 'Import Data' }) => {
     return (
         <Dialog open={open} onClose={onClose} maxWidth='xl' fullWidth >
-            <DialogTitle>Import Data</DialogTitle>
+            <DialogTitle>{title}</DialogTitle>
             <DialogContent>
                 {/* Add your import form or content here */}
                 {children}
