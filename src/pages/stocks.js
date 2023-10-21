@@ -21,6 +21,10 @@ import { useEffect } from 'react';
 import { usePopover } from 'src/hooks/use-popover';
 import { StockActionPopover } from 'src/components/stockActionPopus';
 import { companies } from 'src/constants/company';
+import pdfMake from "pdfmake/build/pdfmake";
+import pdfFonts from "pdfmake/build/vfs_fonts";
+pdfMake.vfs = pdfFonts.pdfMake.vfs;
+
 const now = new Date();
 
 const data =
@@ -326,13 +330,7 @@ const Page = () => {
     setLoading(false);
     setSelectedRows([]);
     stockPopover.handleClose();
-    const staticFilePath = 'mem-1.pdf'; // Adjust this to the path of your static file
-    const newTab = window.open(`${window.location.origin}/${staticFilePath}`, '_blank');
-    if (newTab) {
-      newTab.focus();
-    } else {
-      alert('Your browser is blocking pop-ups. Please allow pop-ups for this website.');
-    }
+    createPdf()
     closeMemoModal()
   }
   const returnFromMemo = async () => {
@@ -347,13 +345,7 @@ const Page = () => {
     setSelectedRows([])
     setLoading(false);
     stockPopover.handleClose();
-    const staticFilePath = 'mem-1.pdf'; // Adjust this to the path of your static file
-    const newTab = window.open(`${window.location.origin}/${staticFilePath}`, '_blank');
-    if (newTab) {
-      newTab.focus();
-    } else {
-      alert('Your browser is blocking pop-ups. Please allow pop-ups for this website.');
-    }
+    createPdf();
     closeMemoModal()
   }
 
@@ -384,6 +376,125 @@ const Page = () => {
 
       setIsMemoSelected(true)
     }
+  }
+
+
+  const createPdf = () => {
+
+    let tableData = []
+    let emptyRows = 26
+    selectedRows.map((s) => {
+      let row = []
+      tableHeaders.map((h, index) => {
+        if (index < 10) {
+          row.push(s[h.key] || " ")
+        }
+      });
+      tableData.push(row)
+    })
+    for (let index = tableData.length; index < emptyRows; index++) {
+      let row = []
+      tableHeaders.map((h, index) => {
+        if (index < 10) {
+          row.push(" ")
+        }
+      });
+      tableData.push(row)
+
+    }
+
+    var dd = {
+      // Define page margins
+      pageMargins: [40, 20, 40, 20], // top, right, bottom, left
+
+      // Content of the PDF
+      content: [
+        // Header with company name and logo
+        {
+          columns: [
+            // Company name
+            {
+              text: 'Van Technology',
+              style: 'header',
+            },
+
+          ],
+        },
+        {
+          text: '25, Mahavir Society, Zaveri Sadak, Navsari 396445',
+          style: 'subheader',
+        },
+        {
+          text: '+919714137409 / www.tanayvan.com',
+          style: 'subheader',
+        },
+
+
+        {
+          text: 'Broker Name: John Doe',
+          margin: [0, 0],
+          bold: true
+        },
+        {
+          text: 'Memo Details',
+          margin: [0, 10],
+          bold: true
+        },
+
+        // Stock table
+
+        {
+          // Define your stock table using table layout
+          table: {
+            body: [
+              tableHeaders.map((h, index) => {
+                if (index < 10) {
+                  return h.title
+                }
+              }).filter(h => h),
+              ...tableData,
+
+            ],
+
+
+          },
+        },
+        {
+          text: 'Signature',
+          margin: [0, 20],
+        },
+        {
+          text: '_____________________________',
+          margin: [0, 5],
+        },
+        {
+          text: 'Terms and Conditions',
+          margin: [0, 10, 0, 0],
+        },
+        {
+          text: 'By signing above, you agree to the terms and conditions.',
+          margin: [0, 5],
+        },
+
+      ],
+      // Define styles
+      styles: {
+        header: {
+          fontSize: 24,
+          bold: true,
+          margin: [0, 0, 0, 1],
+          alignment: 'center'
+        },
+        subheader: {
+          fontSize: 12,
+          alignment: 'center'
+        },
+      },
+
+    }
+
+    pdfMake.createPdf(dd).open()
+    console.log(dd)
   }
   useEffect(() => {
     getStock()
@@ -456,8 +567,9 @@ const Page = () => {
                         <ArrowDownOnSquareIcon />
                       </SvgIcon>
                     )}
+                    onClick={createPdf}
                   >
-                    Export
+                    Make PDf
                   </Button>
                 </Stack>
               </Stack>
