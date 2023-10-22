@@ -574,21 +574,24 @@ const Page = () => {
                 </Stack>
               </Stack>
               <div>
-                <Button
-                  startIcon={(
-                    <SvgIcon fontSize="small">
-                      <PlusIcon />
-                    </SvgIcon>
-                  )}
-                  variant="contained"
-                  onClick={stockPopover.handleOpen}
-                  ref={stockPopover.anchorRef}
-                >
-                  Actions
-                </Button>
+
               </div>
             </Stack>
             <CustomersSearch />
+            <Button
+              startIcon={(
+                <SvgIcon fontSize="small">
+                  <PlusIcon />
+                </SvgIcon>
+              )}
+              variant="contained"
+              onClick={stockPopover.handleOpen}
+              ref={stockPopover.anchorRef}
+              sx={{ maxWidth: "10rem" }}
+              disabled={selectedRows.length ? false : true}
+            >
+              Actions
+            </Button>
             <CustomersTable
               count={stocks.length}
               items={stocks}
